@@ -57,7 +57,7 @@ filtering, ranking, summarizing — without needing custom logic for each questi
 This demo uses mock data. To connect a live QuickBooks Online account:
 
 1. Set up OAuth2 with the Intuit Developer API (see the
-   [qbo-sheets-integration](https://github.com/YOUR_USERNAME/qbo-sheets-integration)
+   [qbo-sheets-integration](https://github.com/gus-automates/qbo-sheets-integration)
    repo for a working OAuth implementation)
 
 2. Replace the `MOCK_DATA` object in `index.html` with live API responses:
