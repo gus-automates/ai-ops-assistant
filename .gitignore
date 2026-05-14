@@ -1,0 +1,5 @@
+# Environment variables — never commit this
+.env
+
+# Node dependencies — large folder, not needed in git
+node_modules/
