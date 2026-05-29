@@ -247,7 +247,7 @@
   <div class="logo">O</div>
   <div>
     <div class="header-title">Ops Assistant</div>
-    <div class="header-sub">QuickBooks Online · Mock Data</div>
+    <div class="header-sub" id="headerSub">QuickBooks Online · Mock Data</div>
   </div>
   <div class="status-dot"><div class="dot"></div> connected</div>
 </header>
@@ -316,32 +316,29 @@ const MOCK_DATA = {
   ]
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SYSTEM PROMPT
-// Sent to Claude on every request. Gives it the company data as context
-// and tells it how to format its responses.
-// ─────────────────────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `
+function buildSystemPrompt(data) {
+  return `
 You are an internal operations assistant for a construction company.
 You have access to the company's QuickBooks Online data shown below.
 Answer questions clearly and concisely. When showing lists or tables, use plain HTML
 (table, th, td tags only — no markdown). Use <strong> for key numbers.
 
 === CUSTOMERS ===
-${JSON.stringify(MOCK_DATA.customers, null, 2)}
+${JSON.stringify(data.customers, null, 2)}
 
 === OPEN PURCHASE ORDERS ===
-${JSON.stringify(MOCK_DATA.purchaseOrders, null, 2)}
+${JSON.stringify(data.purchaseOrders, null, 2)}
 
 === BILLS ===
-${JSON.stringify(MOCK_DATA.bills, null, 2)}
+${JSON.stringify(data.bills, null, 2)}
 
 === PROFIT & LOSS (2025) ===
-${JSON.stringify(MOCK_DATA.pnl, null, 2)}
+${JSON.stringify(data.pnl, null, 2)}
 
 Format currency as $X,XXX. Keep answers short and direct.
 If a question is unrelated to business operations, politely redirect.
 `.trim();
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONVERSATION HISTORY
@@ -376,19 +373,30 @@ async function sendMessage() {
   loading = true;
   document.getElementById('sendBtn').disabled = true;
 
+  // Fetch live QBO snapshot; fall back to MOCK_DATA silently if unavailable
+  let activeData    = MOCK_DATA;
+  let usingLiveData = false;
   try {
-    // ── CALL OUR LOCAL PROXY SERVER ──────────────────────────────────────
-    // Instead of calling api.anthropic.com directly (which would expose
-    // the API key in the browser), we call our own server.js endpoint.
-    // server.js injects the API key from .env and forwards the request.
-    // No credentials ever leave the server.
+    const snap = await fetch('/api/qbo-snapshot');
+    if (snap.ok) {
+      const parsed = await snap.json();
+      if (parsed.customers) {
+        activeData    = parsed;
+        usingLiveData = true;
+      }
+    }
+  } catch (_) {}
+  document.getElementById('headerSub').textContent =
+    `QuickBooks Online · ${usingLiveData ? 'Live Data' : 'Mock Data'}`;
+
+  try {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        system:   SYSTEM_PROMPT,
+        system:   buildSystemPrompt(activeData),
         messages: history,
       })
     });
